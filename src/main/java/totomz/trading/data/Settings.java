@@ -12,7 +12,7 @@ public final class Settings {
 
 
     public static List<String> symbols() {
-        return Arrays.asList(new String[]{ "AMZN", "NFLX", "DIS" });
+        return Arrays.asList("AMZN");
     }
 
     public static LocalDateTime from() {
@@ -28,7 +28,7 @@ public final class Settings {
     }
 
     public static int ib_port() {
-        return 7496;
+        return 7497;
     }
 
     public static String id_host() {
