@@ -2,22 +2,27 @@ package totomz.trading.data.ibapi;
 
 import com.ib.client.Bar;
 import com.ib.client.ContractDetails;
+import totomz.trading.data.serializers.PostgresSerializer;
 
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.List;
 
 public class Main {
 
 
-    public static void main(String[] args) throws InterruptedException {
-        //test();
-        System.out.println(LocalDateTime.now().getDayOfWeek().getValue());
+    public static void main(String[] args) throws Exception {
 
-        LocalDate d = LocalDate.parse("20171219", DateTimeFormatter.BASIC_ISO_DATE);
-        System.out.println(d);
-//        searchContract();
+        PostgresSerializer diocane = new PostgresSerializer();
+        List<Bar> bars = Arrays.asList(
+                new Bar("20190422  15:32:21", 1d, 1d, 1d, 1d, 1l, 1, 1d),
+                new Bar("20190422  15:32:23", 2d, 2d, 2d, 2d, 2l, 3, 2d)
+        );
+        diocane.serialize(bars, "amzn");
+
     }
 
     public static void test() {

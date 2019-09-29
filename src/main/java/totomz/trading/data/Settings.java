@@ -12,7 +12,7 @@ public final class Settings {
 
 
     public static List<String> symbols() {
-        return Arrays.asList("AMZN");
+        return Arrays.asList("AMZN", "DIS", "TSLA", "MSFT", "AMD", "GOOGL", "NFLX");
     }
 
     public static LocalDateTime from() {

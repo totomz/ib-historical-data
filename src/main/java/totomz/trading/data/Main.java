@@ -6,51 +6,49 @@ import com.ib.client.ContractDetails;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import totomz.trading.data.ibapi.IbApiSync;
+import totomz.trading.data.serializers.BarSerializer;
+import totomz.trading.data.serializers.CSVSerializer;
+import totomz.trading.data.serializers.PostgresSerializer;
 
 import java.io.*;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Period;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalAmount;
+import java.time.temporal.TemporalUnit;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Main {
 
     private static Logger log = LoggerFactory.getLogger(Main.class);
-    private final static RateLimiter rateLimiter = RateLimiter.create(0.1); // rate = 1 every 10 seconds
+    private final static RateLimiter rateLimiter = RateLimiter.create(0.06);
+    private final static DateTimeFormatter barTimeFormat = DateTimeFormatter.ofPattern("yyyyMMdd  HH:mm:ss");
 
-    private static void writeCsv(List<Bar> bars, String symbol) throws IOException {
+//    public static void main(String[] args) throws Exception {
+//        for(int i=0; i<1000; i++) {
+//            rateLimiter.acquire(1);
+//            System.out.println(LocalDateTime.now());
+//        }
+//    }
 
-        String lastDay = "";
-        PrintWriter writer = null;
-
-
-        for (Bar bar : bars) {
-            String day = bar.time().split(" ")[0];
-
-            if(!day.equals(lastDay)) {
-                lastDay = day;
-                String fileName = "data/" + symbol + "_" + lastDay + ".csv";
-
-                if(writer != null) {
-                    writer.close();
-                }
-
-                writer = new PrintWriter(new BufferedWriter(new FileWriter(fileName)));
-
-            }
-            LocalDate d = LocalDate.parse(day, DateTimeFormatter.BASIC_ISO_DATE);
-            writer.write(String.format("%s,%s,%s,%s,%s,%s\n",
-                    bar.time(),
-                    d.getDayOfWeek().getValue(),
-                    bar.open(),
-                    bar.high(),
-                    bar.low(),
-                    bar.close(),
-                    bar.volume()
-                    ));
+    public static boolean isTradingHours(LocalDateTime time) {
+        if( time.getDayOfWeek() == DayOfWeek.SATURDAY || time.getDayOfWeek() == DayOfWeek.SUNDAY) {
+            return false;
         }
+
+        if(time.getHour() < 15 || time.getHour() >= 23) {
+            return false;
+        }
+
+        if(time.getHour() == 15 && time.getMinute() <= 30) {
+            return false;
+        }
+
+        return true;
     }
 
     public static void main(String[] args) throws Exception {
@@ -59,6 +57,18 @@ public class Main {
 
         DateTimeFormatter format = DateTimeFormatter.ofPattern("yyyyMMdd HH:mm:ss");
 
+//        BarSerializer serializer = new CSVSerializer("data/sec_1");
+        BarSerializer serializer = new PostgresSerializer();
+
+//        LocalDateTime from = LocalDateTime.now().minus(6, ChronoUnit.MONTHS).withMinute(0).withSecond(0);
+        LocalDateTime inst = LocalDateTime.of(2019,4,19,15,30,0);
+        LocalDateTime to = LocalDateTime.now();
+
+        String barSize = "1 secs";
+        int duration_qty = 1800;
+        ChronoUnit duration_time = ChronoUnit.SECONDS;
+
+        String duration = String.format("%s %s", duration_qty, duration_time.toString().charAt(0));
 
         try(IbApiSync ibapi = new IbApiSync()) {
             ibapi.connect();
@@ -66,39 +76,54 @@ public class Main {
 
             for(String symbol : Settings.symbols()) {
 
+                LocalDateTime from = inst;
+
                 log.info("Processing " + symbol);
                 ContractDetails c = ibapi.searchContract(symbol);
 
-                // If you need to download 1 day, eg 23/11/2018
-                // set duration = 1D, date = 2018/11/24, backtick = 0
-
-                // The API download duration up tp inst, eg 30D before inst
-                LocalDateTime inst = LocalDateTime.of(2018, 11, 24,0, 0);
-                String duration = "3 D";
-                int backtick = 30;
-
                 do {
-                    inst = inst.plusDays(backtick);
-                    rateLimiter.acquire(1);
+                    from = from.plus(duration_qty, duration_time);
 
-                    String end = inst.format(format);
+                    String end = from.format(format);
                     log.info("Downloading up to " + end);
 
-                    List<Bar> bars = ibapi.getHistoricalData(c.contract(), end, duration, "1 min");
-                    writeCsv(bars, symbol);
+                    if( !isTradingHours(from) ) {
+                        log.info(String.format("        -->   %s outside trading hours", from));
+                        continue;
+                    }
+
+                    rateLimiter.acquire(1);
+
+                    List<Bar> bars = ibapi.getHistoricalData(c.contract(), end, duration, barSize);
+
+                    // Check if the day of the bar is the day we've requested.
+                    // From could by holiday. In this case, IB returns us the last bars
+                    // fro the previous trading day.
+                    // So, if we have bars for a day which is not what we have requested, we move forward
+                    // Actually, I don't think this is working.
+                    // The code is probably bugged. The insert in postgres
+                    // is ignoring duplicate timestamp.
+                    LocalDateTime barTime = LocalDateTime.parse(bars.get(0).time(), barTimeFormat);
+                    if(barTime.getDayOfMonth() != from.getDayOfMonth() ) {
+                        log.info("    +++> bartime is " + barTime + ". Moving to the next day!");
+
+                        // Remove the duration (to reste to the first time interval
+                        // and move on 1 day
+                        from = from.plus(1, ChronoUnit.DAYS).withHour(15).withMinute(30).withSecond(0);
+                        continue;
+                    }
+
+                    serializer.serialize(bars, symbol);
 
                     log.info("Done");
-
-                }while (inst.isBefore(LocalDateTime.now()));
+                }
+                while (from.isBefore(to));
             }
 
         }
         catch (Exception e) {
             log.error(e.getMessage(), e);
         }
-
-
-
 
     }
 
