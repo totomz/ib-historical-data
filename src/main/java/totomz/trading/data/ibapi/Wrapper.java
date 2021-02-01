@@ -28,7 +28,7 @@ public class Wrapper  implements EWrapper {
     protected EClientSocket client() { return m_client; }
 
 
-    public void connect(int clientId) {
+    public void connect() {
 
         m_client.eConnect(Settings.id_host(), Settings.ib_port(), Settings.clientId());
 

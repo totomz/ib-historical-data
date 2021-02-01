@@ -12,12 +12,13 @@ public final class Settings {
 
 
     public static List<String> symbols() {
-        return Arrays.asList("AMZN", "DIS", "TSLA", "MSFT", "AMD", "GOOGL", "NFLX");
+        String symbols = System.getProperty("symbols", "AMZN,DIS,TSLA,MSFT");
+        return Arrays.asList(symbols.split(","));
     }
 
-    public static LocalDateTime from() {
-        return LocalDateTime.of(2018, 1, 1, 8,0);
-    }
+//    public static LocalDateTime from() {
+//        return LocalDateTime.of(2018, 1, 1, 8,0);
+//    }
 
     public static LocalDateTime to() {
         return LocalDateTime.now();
@@ -28,11 +29,20 @@ public final class Settings {
     }
 
     public static int ib_port() {
-        return 7497;
+        String ibport = System.getProperty("ib.port", "7496");
+        return Integer.parseInt(ibport);
     }
 
     public static String id_host() {
-        return "127.0.0.1";
-//        return "192.168.100.106";
+        return System.getProperty("ib.host", "127.0.0.1");
+    }
+
+    public static String getCsvFolder() {
+        return System.getProperty("csv", "data/sec_1");
+    }
+    
+    public static int backdaysFromNow() {
+        String days = System.getProperty("fromd", "10");
+        return Integer.parseInt(days);
     }
 }

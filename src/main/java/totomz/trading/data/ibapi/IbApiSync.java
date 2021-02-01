@@ -29,7 +29,7 @@ public class IbApiSync implements Closeable {
     }
 
     public void connect() {
-        ibapi.connect(1);
+        ibapi.connect();
     }
 
     /**
@@ -44,6 +44,7 @@ public class IbApiSync implements Closeable {
     public List<Bar> getHistoricalData(Contract contract, String endDate, String duration, String barSize) {
 
         int reqId = ibapi.nextValidId();
+        // useRTH := 1 only regular hours, 0 all
         client.reqHistoricalData(reqId, contract, endDate, duration, barSize, "TRADES", 1, 1, false, null);
 
         List<Bar> bars = (List<Bar>)ibapi.peekResult(reqId);

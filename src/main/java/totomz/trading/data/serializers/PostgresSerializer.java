@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -127,6 +128,31 @@ public class PostgresSerializer extends BarSerializer implements Closeable {
             throw e;
         }
 
+    }
+
+    @Override
+    public boolean haveData(String symbol, LocalDateTime from, int duration_qty, ChronoUnit duration_time) {
+
+        String fromTime = from.minus(duration_qty, duration_time).format(DateTimeFormatter.ofPattern("yyyyMMdd HH:mm:ss"));
+        String toTime = from.format(DateTimeFormatter.ofPattern("yyyyMMdd HH:mm:ss"));
+        String sql = "select count(*) from " + symbol.toLowerCase() + " where datetime > '" + fromTime + "' and datetime < '" + toTime + "'";
+        System.out.println("    " + sql);
+        try(Statement stmt = conn.createStatement();) {
+            try(ResultSet rs =  stmt.executeQuery(sql);) {
+                while (rs.next()) {
+                    int rows = rs.getInt(1);
+                    if(rows > 0) {
+                        log.info("Rows for " + symbol + " at " + from + ":" + rows);
+                        return true;
+                    }
+                }
+            }
+        }
+        catch (SQLException e) {
+            log.error("Dio java", e);
+        }
+
+        return false;
     }
 
     @Override

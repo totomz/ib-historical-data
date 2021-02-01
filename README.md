@@ -1,20 +1,19 @@
 # ib-historical-data
 
-## Run postgres
-```
-docker volume create trading_pgdata
-docker run  -e POSTGRES_PASSWORD=pippuz \
-            -e POSTGRES_USER=trading \
-            -v trading_pgdata:/var/lib/postgresql/data \
-            --network trading \
-            --name trading_db \
-            -p 5432:5432 \
-            -d postgres 
+Download historical data and stores them as CSV
 
-docker run -p 80:80 \
-    -e "PGADMIN_DEFAULT_EMAIL=user@domain.com" \
-    -e "PGADMIN_DEFAULT_PASSWORD=lopilopi" \
-    -v trading_pgadmin:/var/lib/pgadmin
-    --network trading \
-    -d dpage/pgadmin4
-``
+
+
+
+## Usage
+
+```
+java -jar \
+    -Dsymbols=FB,AMZN \
+    -Dib.port=7496 \
+    -Dib.host=127.0.0.1 \
+    -Dcsv=sec1 \
+    -Dfromd=30 \
+    ib-historical-data-all-1.0-SNAPSHOT.jar
+
+```

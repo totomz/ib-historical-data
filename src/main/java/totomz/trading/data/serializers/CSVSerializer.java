@@ -7,7 +7,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 public class CSVSerializer extends BarSerializer {
@@ -55,5 +57,11 @@ public class CSVSerializer extends BarSerializer {
         }
 
     }
+
+    @Override
+    public boolean haveData(String symbol, LocalDateTime from, int duration_qty, ChronoUnit duration_time) {
+        return false;
+    }
+
 
 }

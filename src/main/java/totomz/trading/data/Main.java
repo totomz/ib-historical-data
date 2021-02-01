@@ -10,22 +10,19 @@ import totomz.trading.data.serializers.BarSerializer;
 import totomz.trading.data.serializers.CSVSerializer;
 import totomz.trading.data.serializers.PostgresSerializer;
 
-import java.io.*;
 import java.time.DayOfWeek;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.Period;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalAmount;
 import java.time.temporal.TemporalUnit;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.TimeUnit;
 
 public class Main {
 
     private static Logger log = LoggerFactory.getLogger(Main.class);
-    private final static RateLimiter rateLimiter = RateLimiter.create(0.06);
+    private final static RateLimiter rateLimiter = RateLimiter.create(0.1); // 1 request every 10 seconds
     private final static DateTimeFormatter barTimeFormat = DateTimeFormatter.ofPattern("yyyyMMdd  HH:mm:ss");
 
 //    public static void main(String[] args) throws Exception {
@@ -40,7 +37,7 @@ public class Main {
             return false;
         }
 
-        if(time.getHour() < 15 || time.getHour() >= 23) {
+        if(time.getHour() < 15 || time.getHour() > 22) {
             return false;
         }
 
@@ -57,11 +54,15 @@ public class Main {
 
         DateTimeFormatter format = DateTimeFormatter.ofPattern("yyyyMMdd HH:mm:ss");
 
-//        BarSerializer serializer = new CSVSerializer("data/sec_1");
-        BarSerializer serializer = new PostgresSerializer();
+        BarSerializer serializer = new CSVSerializer(Settings.getCsvFolder());
+//        BarSerializer serializer = new PostgresSerializer();
 
-//        LocalDateTime from = LocalDateTime.now().minus(6, ChronoUnit.MONTHS).withMinute(0).withSecond(0);
-        LocalDateTime inst = LocalDateTime.of(2019,4,19,15,30,0);
+//        LocalDateTime inst = LocalDateTime.of(2019,4,19,15,30,0);
+        LocalDateTime inst = LocalDateTime.now()
+                .minus(Settings.backdaysFromNow(), ChronoUnit.DAYS)
+                .withHour(15)
+                .withMinute(30)
+                .withSecond(0);
         LocalDateTime to = LocalDateTime.now();
 
         String barSize = "1 secs";
@@ -71,6 +72,7 @@ public class Main {
         String duration = String.format("%s %s", duration_qty, duration_time.toString().charAt(0));
 
         try(IbApiSync ibapi = new IbApiSync()) {
+            log.info("...connecting");
             ibapi.connect();
 
 
@@ -78,23 +80,29 @@ public class Main {
 
                 LocalDateTime from = inst;
 
-                log.info("Processing " + symbol);
+                log.info("#### Processing " + symbol);
                 ContractDetails c = ibapi.searchContract(symbol);
 
                 do {
                     from = from.plus(duration_qty, duration_time);
 
                     String end = from.format(format);
-                    log.info("Downloading up to " + end);
+                    
+                    if( !isTradingHours(from)) {
+//                        log.info(String.format("        -->   %s outside trading hours", from));
+                        continue;
+                    }
 
-                    if( !isTradingHours(from) ) {
-                        log.info(String.format("        -->   %s outside trading hours", from));
+                    if(serializer.haveData(symbol, from, duration_qty, duration_time)) {
+                        log.info(String.format("        -->   %s data already in the db", from));
                         continue;
                     }
 
                     rateLimiter.acquire(1);
+                    log.info(String.format("Downloading %s of [%s] up to %s", duration, symbol, from));
 
                     List<Bar> bars = ibapi.getHistoricalData(c.contract(), end, duration, barSize);
+//                    List<Bar> bars = new ArrayList<>();
 
                     // Check if the day of the bar is the day we've requested.
                     // From could by holiday. In this case, IB returns us the last bars
