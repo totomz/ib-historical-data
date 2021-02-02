@@ -49,7 +49,9 @@ public class Wrapper  implements EWrapper {
     }
 
     public void disconnect() {
-        m_client.eDisconnect();
+        if(m_client.isConnected()) {
+            m_client.eDisconnect();   
+        }
     }
 
     public Object peekResult(int reqId) {

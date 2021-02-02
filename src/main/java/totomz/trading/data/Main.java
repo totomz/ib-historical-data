@@ -8,27 +8,27 @@ import org.slf4j.LoggerFactory;
 import totomz.trading.data.ibapi.IbApiSync;
 import totomz.trading.data.serializers.BarSerializer;
 import totomz.trading.data.serializers.CSVSerializer;
-import totomz.trading.data.serializers.PostgresSerializer;
 
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalUnit;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 public class Main {
 
     private static Logger log = LoggerFactory.getLogger(Main.class);
-    private final static RateLimiter rateLimiter = RateLimiter.create(0.1); // 1 request every 10 seconds
-    private final static DateTimeFormatter barTimeFormat = DateTimeFormatter.ofPattern("yyyyMMdd  HH:mm:ss");
+    private final static RateLimiter rateLimiter = RateLimiter.create(0.09); // little less than 1 request every 10 seconds
+    public final static DateTimeFormatter barTimeFormat = DateTimeFormatter.ofPattern("yyyyMMdd  HH:mm:ss");
 
 //    public static void main(String[] args) throws Exception {
+//        LocalDateTime last = LocalDateTime.now();
 //        for(int i=0; i<1000; i++) {
 //            rateLimiter.acquire(1);
-//            System.out.println(LocalDateTime.now());
+//            LocalDateTime now = LocalDateTime.now();
+//            long ms = Duration.between(last, now).toMillis();
+//            System.out.println(now + " --> " + ms);
+//            last = now;
 //        }
 //    }
 
@@ -55,16 +55,12 @@ public class Main {
         DateTimeFormatter format = DateTimeFormatter.ofPattern("yyyyMMdd HH:mm:ss");
 
         BarSerializer serializer = new CSVSerializer(Settings.getCsvFolder());
-//        BarSerializer serializer = new PostgresSerializer();
 
-//        LocalDateTime inst = LocalDateTime.of(2019,4,19,15,30,0);
-        LocalDateTime inst = LocalDateTime.now()
-                .minus(Settings.backdaysFromNow(), ChronoUnit.DAYS)
-                .withHour(15)
-                .withMinute(30)
-                .withSecond(0);
-        LocalDateTime to = LocalDateTime.now();
-
+        LocalDateTime inst = Settings.from();
+        LocalDateTime to = Settings.to();
+        
+        log.info(String.format("Download data in range %s --> %s", inst, to));
+        
         String barSize = "1 secs";
         int duration_qty = 1800;
         ChronoUnit duration_time = ChronoUnit.SECONDS;
@@ -92,13 +88,23 @@ public class Main {
 //                        log.info(String.format("        -->   %s outside trading hours", from));
                         continue;
                     }
-
+                    
+                    /*
+                        from/end/inst are messy
+                        ibapi retireve candles BACKWARD from <from> for "1800 s". From is actually the last instant. 
+                        from=16:00 correspond to the interval [15h30, 16h00) <-- not a typo, the last second is excluded
+                        
+                        The serializer does not know about the last second that is missing.
+                        This can fail in sooo many cases...
+                     */
                     if(serializer.haveData(symbol, from, duration_qty, duration_time)) {
                         log.info(String.format("        -->   %s data already in the db", from));
                         continue;
                     }
 
                     rateLimiter.acquire(1);
+                    mustSleep(1000);
+                    
                     log.info(String.format("Downloading %s of [%s] up to %s", duration, symbol, from));
 
                     List<Bar> bars = ibapi.getHistoricalData(c.contract(), end, duration, barSize);
@@ -133,6 +139,13 @@ public class Main {
             log.error(e.getMessage(), e);
         }
 
+    }
+    
+    public static void mustSleep(long millis){
+        try {
+            Thread.sleep(millis);
+        }
+        catch (Exception e) {}
     }
 
 }

@@ -6,15 +6,16 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.List;
 
 public class CSVSerializer extends BarSerializer {
 
     private final String folder;
+    
+    private HashMap<String, HashMap<String, Bar>> cache = new HashMap<>();
 
     public CSVSerializer(String folder) {
         this.folder = folder;
