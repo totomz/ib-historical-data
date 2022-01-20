@@ -2,10 +2,7 @@ package totomz.trading.data.serializers;
 
 import com.ib.client.Bar;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -13,12 +10,12 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Scanner;
 
 public class CSVSerializer extends BarSerializer {
 
     private final String folder;
-    
-    private HashMap<String, HashMap<String, Bar>> cache = new HashMap<>();
+    private HashMap<String, Boolean> cache = new HashMap<>();
 
     public CSVSerializer(String folder) {
         this.folder = folder;
@@ -32,11 +29,11 @@ public class CSVSerializer extends BarSerializer {
         for (Bar bar : bars) {
             String day = bar.time().split(" ")[0];
 
-            if(!day.equals(lastDay)) {
+            if (!day.equals(lastDay)) {
                 lastDay = day;
                 String fileName = this.folder + "/" + lastDay + "-" + symbol.toUpperCase() + ".csv";
 
-                if(writer != null) {
+                if (writer != null) {
                     writer.close();
                 }
 
@@ -56,7 +53,7 @@ public class CSVSerializer extends BarSerializer {
             ));
         }
 
-        if(writer != null) {
+        if (writer != null) {
             writer.close();
         }
 
@@ -66,8 +63,80 @@ public class CSVSerializer extends BarSerializer {
     public boolean haveData(String symbol, LocalDateTime from, int duration_qty, ChronoUnit duration_time) {
         String sday = from.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         String fileName = this.folder + "/" + sday + "-" + symbol.toUpperCase() + ".csv";
-        return Files.exists(Path.of(fileName));
+        Path path = Path.of(fileName);
+            
+        if (!Files.exists(path)) {
+            return false;
+        }
+
+        if (cache.getOrDefault(sday, Boolean.FALSE)) {
+            return true;
+        }
+        
+        String lastLine = tail(path.toFile());
+
+        if (lastLine.startsWith(String.format("%s  21:59:59,", sday))) {
+            System.out.println("FULL FILE FOUND!");
+            cache.put(sday, Boolean.TRUE);
+            return true;
+        }
+        
+        // If I'm here, the file exists but it's not full
+        // I'll delete it before appending the bars
+        try {
+            Files.delete(path);
+            System.out.println("### DELETED because not full");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
+        return false;
     }
 
 
+    public String tail(File file) {
+        RandomAccessFile fileHandler = null;
+        try {
+            fileHandler = new RandomAccessFile(file, "r");
+            long fileLength = fileHandler.length() - 1;
+            StringBuilder sb = new StringBuilder();
+
+            for (long filePointer = fileLength; filePointer != -1; filePointer--) {
+                fileHandler.seek(filePointer);
+                int readByte = fileHandler.readByte();
+
+                if (readByte == 0xA) {
+                    if (filePointer == fileLength) {
+                        continue;
+                    }
+                    break;
+
+                } else if (readByte == 0xD) {
+                    if (filePointer == fileLength - 1) {
+                        continue;
+                    }
+                    break;
+                }
+
+                sb.append((char) readByte);
+            }
+
+            String lastLine = sb.reverse().toString();
+            return lastLine;
+        } catch (java.io.FileNotFoundException e) {
+            e.printStackTrace();
+            return null;
+        } catch (java.io.IOException e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            if (fileHandler != null)
+                try {
+                    fileHandler.close();
+                } catch (IOException e) {
+                    /* ignore */
+                }
+        }
+    }
 }

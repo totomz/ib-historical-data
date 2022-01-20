@@ -17,7 +17,7 @@ public final class Settings {
     }
 
     public static List<String> symbols() {
-        String symbols = System.getProperty("symbols", "AMZN,DIS,TSLA,MSFT");
+        String symbols = System.getProperty("symbols", "FB,AMZN,DIS,TSLA,MSFT");
         return Arrays.asList(symbols.split(","));
     }
 
@@ -30,7 +30,7 @@ public final class Settings {
             return LocalDateTime.now().minus(n, ChronoUnit.DAYS).withHour(8).withMinute(0);
         }
         
-        String[] dates = System.getProperty("from", "2021.02.01").split("\\.");
+        String[] dates = System.getProperty("from", "2022.01.10").split("\\.");
         return LocalDateTime.of(Integer.parseInt(dates[0]), 
                                 Integer.parseInt(dates[1]), 
                                 Integer.parseInt(dates[2]), 8,0);
@@ -44,7 +44,7 @@ public final class Settings {
             return LocalDateTime.now().withHour(8).withMinute(0);
         }
         
-        String[] dates = System.getProperty("to", "2021.02.02").split("\\.");
+        String[] dates = System.getProperty("to", "2022.02.02").split("\\.");
         return LocalDateTime.of(Integer.parseInt(dates[0]), 
                                 Integer.parseInt(dates[1]), 
                                 Integer.parseInt(dates[2]), 8,0);
@@ -60,11 +60,11 @@ public final class Settings {
     }
 
     public static String id_host() {
-        return System.getProperty("ib.host", "192.168.10.204");
+        return System.getProperty("ib.host", "192.168.10.180");
     }
 
     public static String getCsvFolder() {
-        return System.getProperty("csv", "data/sec_1");
+        return System.getProperty("csv", "sec1");
     }
     
 }
