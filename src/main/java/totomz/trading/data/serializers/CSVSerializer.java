@@ -6,7 +6,10 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
@@ -61,7 +64,9 @@ public class CSVSerializer extends BarSerializer {
 
     @Override
     public boolean haveData(String symbol, LocalDateTime from, int duration_qty, ChronoUnit duration_time) {
-        return false;
+        String sday = from.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String fileName = this.folder + "/" + sday + "-" + symbol.toUpperCase() + ".csv";
+        return Files.exists(Path.of(fileName));
     }
 
 

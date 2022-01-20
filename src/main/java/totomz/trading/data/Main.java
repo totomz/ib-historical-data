@@ -21,17 +21,6 @@ public class Main {
     private final static RateLimiter rateLimiter = RateLimiter.create(0.09); // little less than 1 request every 10 seconds
     public final static DateTimeFormatter barTimeFormat = DateTimeFormatter.ofPattern("yyyyMMdd  HH:mm:ss");
 
-//    public static void main(String[] args) throws Exception {
-//        LocalDateTime last = LocalDateTime.now();
-//        for(int i=0; i<1000; i++) {
-//            rateLimiter.acquire(1);
-//            LocalDateTime now = LocalDateTime.now();
-//            long ms = Duration.between(last, now).toMillis();
-//            System.out.println(now + " --> " + ms);
-//            last = now;
-//        }
-//    }
-
     public static boolean isTradingHours(LocalDateTime time) {
         if( time.getDayOfWeek() == DayOfWeek.SATURDAY || time.getDayOfWeek() == DayOfWeek.SUNDAY) {
             return false;
@@ -121,7 +110,7 @@ public class Main {
                     if(barTime.getDayOfMonth() != from.getDayOfMonth() ) {
                         log.info("    +++> bartime is " + barTime + ". Moving to the next day!");
 
-                        // Remove the duration (to reste to the first time interval
+                        // Remove the duration (to reset to the first time interval)
                         // and move on 1 day
                         from = from.plus(1, ChronoUnit.DAYS).withHour(15).withMinute(30).withSecond(0);
                         continue;
