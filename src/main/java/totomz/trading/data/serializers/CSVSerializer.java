@@ -16,7 +16,7 @@ public class CSVSerializer extends BarSerializer {
 
     private final String folder;
     private HashMap<String, Boolean> cache = new HashMap<>();
-
+    private final DateTimeFormatter format = DateTimeFormatter.ofPattern("yyyyMMdd  HH:mm:ss");
     public CSVSerializer(String folder) {
         this.folder = folder;
     }
@@ -40,7 +40,6 @@ public class CSVSerializer extends BarSerializer {
                 writer = new PrintWriter(new BufferedWriter(new FileWriter(fileName, true)));
 
             }
-//            LocalDate d = LocalDate.parse(day, DateTimeFormatter.BASIC_ISO_DATE);
 
             writer.write(String.format("%s,%s,%s,%s,%s,%s\n",
                     bar.time(),
@@ -49,7 +48,6 @@ public class CSVSerializer extends BarSerializer {
                     bar.low(),
                     bar.close(),
                     bar.volume()
-//                    d.getDayOfWeek().getValue(),
             ));
         }
 
@@ -60,38 +58,20 @@ public class CSVSerializer extends BarSerializer {
     }
 
     @Override
-    public boolean haveData(String symbol, LocalDateTime from, int duration_qty, ChronoUnit duration_time) {
+    public boolean haveData(String symbol, LocalDateTime from, LocalDateTime to) {
         String sday = from.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         String fileName = this.folder + "/" + sday + "-" + symbol.toUpperCase() + ".csv";
         Path path = Path.of(fileName);
-            
+
         if (!Files.exists(path)) {
             return false;
         }
-
-        if (cache.getOrDefault(sday, Boolean.FALSE)) {
-            return true;
-        }
         
         String lastLine = tail(path.toFile());
+        String lastDateString = lastLine.split(",")[0];
+        LocalDateTime lastInFile =  LocalDateTime.parse(lastDateString, format);
 
-        if (lastLine.startsWith(String.format("%s  21:59:59,", sday))) {
-            System.out.println("FULL FILE FOUND!");
-            cache.put(sday, Boolean.TRUE);
-            return true;
-        }
-        
-        // If I'm here, the file exists but it's not full
-        // I'll delete it before appending the bars
-        try {
-            Files.delete(path);
-            System.out.println("### DELETED because not full");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-
-        return false;
+        return lastInFile.isAfter(from);
     }
 
 

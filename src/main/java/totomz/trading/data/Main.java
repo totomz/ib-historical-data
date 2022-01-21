@@ -81,12 +81,13 @@ public class Main {
                     /*
                         from/end/inst are messy
                         ibapi retireve candles BACKWARD from <from> for "1800 s". From is actually the last instant. 
-                        from=16:00 correspond to the interval [15h30, 16h00) <-- not a typo, the last second is excluded
+                        from=16:00 correspond to the interval [15h30, 16h00) <-- not a typo, the last second is excluded!
                         
-                        The serializer does not know about the last second that is missing.
-                        This can fail in sooo many cases...
+                        The serializer does not know about the last second that is missing.                        
                      */
-                    if(serializer.haveData(symbol, from, duration_qty, duration_time)) {
+                    LocalDateTime fromReal =  from.plus(-1 * duration_qty, ChronoUnit.SECONDS);
+                    LocalDateTime toReal =  from.plus(-1 , ChronoUnit.SECONDS);
+                    if(serializer.haveData(symbol, fromReal, toReal)) {
                         log.info(String.format("        -->   %s data already in the db", from));
                         continue;
                     }
