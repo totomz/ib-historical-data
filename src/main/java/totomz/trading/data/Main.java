@@ -9,11 +9,11 @@ import totomz.trading.data.ibapi.IbApiSync;
 import totomz.trading.data.serializers.BarSerializer;
 import totomz.trading.data.serializers.CSVSerializer;
 
-import java.time.DayOfWeek;
-import java.time.LocalDateTime;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.TimeZone;
 
 public class Main {
 
@@ -21,16 +21,24 @@ public class Main {
     private final static RateLimiter rateLimiter = RateLimiter.create(0.09); // little less than 1 request every 10 seconds
     public final static DateTimeFormatter barTimeFormat = DateTimeFormatter.ofPattern("yyyyMMdd  HH:mm:ss");
 
-    public static boolean isTradingHours(LocalDateTime time) {
-        if( time.getDayOfWeek() == DayOfWeek.SATURDAY || time.getDayOfWeek() == DayOfWeek.SUNDAY) {
+    private final static LocalTime openingTimeEST = LocalTime.of(9, 30);
+    private final static LocalTime closingTimeEST = LocalTime.of(16, 0);
+    private final static ZoneId tzRome = ZoneId.of("Europe/Rome");
+    private final static ZoneId tzEst = ZoneId.of("America/New_York");
+        
+    public static boolean isTradingHours(LocalDateTime dateTime) {
+        if( dateTime.getDayOfWeek() == DayOfWeek.SATURDAY || dateTime.getDayOfWeek() == DayOfWeek.SUNDAY) {
             return false;
         }
 
-        if(time.getHour() < 15 || time.getHour() > 22) {
+        ZonedDateTime nasdaqDateTime = dateTime.atZone(tzRome).withZoneSameInstant(tzEst);
+        LocalTime nasdaqTime = nasdaqDateTime.toLocalTime();
+                
+        if (nasdaqTime.isBefore(openingTimeEST)) {
             return false;
         }
-
-        if(time.getHour() == 15 && time.getMinute() <= 30) {
+        
+        if (nasdaqTime.isAfter(closingTimeEST)) {
             return false;
         }
 
@@ -74,7 +82,7 @@ public class Main {
                     String end = from.format(format);
                     
                     if( !isTradingHours(from)) {
-//                        log.info(String.format("        -->   %s outside trading hours", from));
+                       log.info(String.format("        -->   %s outside trading hours", from));
                         continue;
                     }
                     

@@ -8,7 +8,7 @@
     </appender>
 
     <appender name="file" class="ch.qos.logback.core.FileAppender">
-        <file>logs/app.log</file>
+        <file>app.log</file>
         <append>true</append>
         <immediateFlush>true</immediateFlush>
         <encoder>

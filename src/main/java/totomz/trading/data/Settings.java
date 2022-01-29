@@ -30,7 +30,7 @@ public final class Settings {
             return LocalDateTime.now().minus(n, ChronoUnit.DAYS).withHour(8).withMinute(0);
         }
         
-        String[] dates = System.getProperty("from", "2021.01.10").split("\\.");
+        String[] dates = System.getProperty("from", "2021.01.04").split("\\.");
         return LocalDateTime.of(Integer.parseInt(dates[0]), 
                                 Integer.parseInt(dates[1]), 
                                 Integer.parseInt(dates[2]), 8,0);
@@ -64,7 +64,7 @@ public final class Settings {
     }
 
     public static String getCsvFolder() {
-        return System.getProperty("csv", "sec1");
+        return System.getProperty("csv", "data/sec_1");
     }
     
 }
