@@ -30,7 +30,7 @@ public final class Settings {
             return LocalDateTime.now().minus(n, ChronoUnit.DAYS).withHour(8).withMinute(0);
         }
         
-        String[] dates = System.getProperty("from", "2022.01.03").split("\\.");
+        String[] dates = System.getProperty("from", "2022.01.14").split("\\.");
         return LocalDateTime.of(Integer.parseInt(dates[0]), 
                                 Integer.parseInt(dates[1]), 
                                 Integer.parseInt(dates[2]), 8,0);
@@ -44,7 +44,7 @@ public final class Settings {
             return LocalDateTime.now().withHour(8).withMinute(0);
         }
         
-        String[] dates = System.getProperty("to", "2022.01.04").split("\\.");
+        String[] dates = System.getProperty("to", "2022.01.19").split("\\.");
         return LocalDateTime.of(Integer.parseInt(dates[0]), 
                                 Integer.parseInt(dates[1]), 
                                 Integer.parseInt(dates[2]), 8,0);

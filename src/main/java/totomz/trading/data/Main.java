@@ -12,6 +12,7 @@ import totomz.trading.data.serializers.CSVSerializer;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.TimeZone;
 
@@ -38,7 +39,7 @@ public class Main {
             return false;
         }
                 
-        if (nasdaqTime.compareTo(closingTimeEST) > 0 ) {
+        if (nasdaqTime.compareTo(closingTimeEST) >= 0 ) {
             return false;
         }
 
@@ -78,30 +79,33 @@ public class Main {
                     
                     both datetimes are in the LOCAL timezone;
                  */
+                // DO NOT USE fromInterval! EVER!
+                // IbApi works only with the endInterva (see above); endInterval is the only time reference that should be used
+                // to track time. I spent like 2 weeks trying to work with both from+end. It's just a mess
+                // LocalDateTime fromInterval = Settings.from().plus(-1 * duration_qty, ChronoUnit.SECONDS);
                 LocalDateTime endInterval = Settings.from();
-                LocalDateTime fromInterval = Settings.from().plus(-1 * duration_qty, ChronoUnit.SECONDS);;
 
                 log.info("#### Processing " + symbol);
                 ContractDetails c = ibapi.searchContract(symbol);
 
                 do {
-                    fromInterval = fromInterval.plus(duration_qty, ChronoUnit.SECONDS);
                     endInterval = endInterval.plus(duration_qty, ChronoUnit.SECONDS);
+                    // LocalDateTime fromInterval = endInterval.plus(-1 * duration_qty, ChronoUnit.SECONDS);
                     
-                    if( !isTradingHours(fromInterval)) {
-                       log.info(String.format("        -->   [%s, %s) outside trading hours (EST)", fromInterval, endInterval));
+                    if( !isTradingHours(endInterval.plus(-1 * duration_qty, ChronoUnit.SECONDS))) {
+                       log.info(String.format("        -->   [%s, %s) outside trading hours (EST)", endInterval.plus(-1 * duration_qty, ChronoUnit.SECONDS), endInterval));
                         continue;
                     }
                     
-                    if(serializer.haveData(symbol, fromInterval, endInterval)) {
-                        log.info(String.format("        -->   [%s, %s) data already in the db", fromInterval, endInterval));
+                    if(serializer.haveData(symbol, endInterval.plus(-1 * duration_qty, ChronoUnit.SECONDS), endInterval)) {
+                        log.info(String.format("        -->   [%s, %s) data already in the db", endInterval.plus(-1 * duration_qty, ChronoUnit.SECONDS), endInterval));
                         continue;
                     }
 
                     rateLimiter.acquire(1);
                     mustSleep(1000);
                     
-                    log.info(String.format("Downloading %s of [%s] up to [%s, %s)", duration, symbol, fromInterval, endInterval));
+                    log.info(String.format("Downloading %s of [%s] up to [%s, %s)", duration, symbol, endInterval.plus(-1 * duration_qty, ChronoUnit.SECONDS), endInterval));
                     String endFormatted = endInterval.format(format);
                     List<Bar> bars = ibapi.getHistoricalData(c.contract(), endFormatted, duration, barSize);
 
@@ -113,20 +117,19 @@ public class Main {
                     // The code is probably bugged. The insert in postgres
                     // is ignoring duplicate timestamp.
                     LocalDateTime barTime = LocalDateTime.parse(bars.get(0).time(), barTimeFormat);
-                    if(barTime.getDayOfMonth() != fromInterval.getDayOfMonth() ) {
+                    if(barTime.getDayOfMonth() != endInterval.getDayOfMonth() ) {
                         log.info("    +++> bartime is " + barTime + ". Moving to the next day!");
 
                         // Remove the duration (to reset to the first time interval)
                         // and set the time to the Nasdaq opening hours
-                        ZonedDateTime nasdaqDateTime = fromInterval.plus(1, ChronoUnit.DAYS)
+                        ZonedDateTime nasdaqDateTime = endInterval.plus(1, ChronoUnit.DAYS)
                                 .atZone(tzEst)
                                 .withHour(9)
                                 .withMinute(30)
                                 .withSecond(0)
                                 .withZoneSameInstant(tzRome);
                         
-                        fromInterval = nasdaqDateTime.toLocalDateTime();
-                        // fromInterval = fromInterval.plus(1, ChronoUnit.DAYS).withHour(15).withMinute(30).withSecond(0);
+                        endInterval = nasdaqDateTime.toLocalDateTime();
                         continue;
                     }
 
