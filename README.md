@@ -3,10 +3,15 @@
 Download historical data and stores them as CSV
 
 ## Usage
+Gradle 4.9 is required: `sdkman install gradle 4.9`
 
+Build the jar
+```shell
+gradle fatJar
 ```
-gradle fatJar 
 
+Run 
+```shell
 java -jar \
     -Dsymbols=FB,AMZN,TSLA,DIS,NFLX,GME,AMC, \
     -Dib.port=7496 \
